@@ -2,8 +2,8 @@ import requests
 import json
 file = open("corpus.txt",'rb')
 text = file.read()
+#take response from sever Duckling
 Data = {'locale':'ru_RU','text':text}
-
 url='http://0.0.0.0:8000/parse'
 response = requests.post(url,data=Data)
 text=response.text
@@ -13,14 +13,15 @@ f.write(text)
 with open('output.json', 'w') as outfile:
     outfile.write(str(response.json()))
 test_list = json.loads(response.text)
-#print(test_list)
 
 #get dictionaries of time AND dict of duration
 d_list = [item for item in test_list if item['dim'] == 'time']	
 duration_list = [item for item in test_list if item['dim'] =='duration']
 
+#modify value of duration_dictionary from 2 час -> PT2H
 value_Duration= [sub['value']['value'] for sub in duration_list]
 unit_Duration = [sub['value']['unit'] for sub in duration_list]
+
 #modify unit_Duration
 for i, word in enumerate(unit_Duration):
     if word == 'year':
@@ -48,7 +49,7 @@ for i in range(len(unit_Duration)):
     list_valueD.append(valueD)
 print(list_valueD) 
    
-#print(unit_Duration)
+
 print(str(duration_list))
 list_of_TE= d_list
 print(str(list_of_TE))
@@ -57,13 +58,13 @@ print(str(list_of_TE))
 body  = [ sub['body']for sub in list_of_TE ] 
 body.extend([sub['body']for sub in duration_list])
 
+#add items of key 'value' 
 valueTimeX = [ sub['value']['value'] for sub in list_of_TE ] 
 valueTimeX.extend(list_valueD)
+
 #add items (value) of key 'dim' ('duration') in duration_list to general list typeTime
 typeTime = [ sub['value']['grain'] for sub in list_of_TE ] 
 typeTime.extend([sub['dim']for sub in duration_list])
-print(str(body))
-print(str(valueTimeX))
 
 #proccessing Type of TIMEML
 for i, word in enumerate(typeTime):
@@ -75,13 +76,11 @@ for i, word in enumerate(typeTime):
         typeTime[i] = 'TIME'
     if word == 'duration':
         typeTime[i] = 'DURATION'
+
+print(str(body))
+print(str(valueTimeX))
 print(str(typeTime))
-"""
-typeTimeX= [t.replace('day', 'DATE') for t in typeTime]
-typeTimeX= [t.replace('hour', 'TIME') for t in typeTime]
-typeTimeX= [t.replace('minute', 'TIME') for t in typeTime]
-print(str(typeTimeX))
-"""
+
 def __getTIMEX3Str(tid, timexType, value, timex):
         TIMEX3_TID = "<TIMEX3 tid=\"t"
         TIMEX3_TYPE = "\" type=\""
@@ -101,6 +100,7 @@ for i in range(len(body)):
   value = valueTimeX[i]
   timex = body[i]
   strAll = strAll + __getTIMEX3Str(tid, timexType, value, timex) + "\n"	
+
 print(strAll)
 
 
