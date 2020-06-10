@@ -39,10 +39,10 @@ ruleInstants = mkRuleInstants
 
 ruleDaysOfWeek :: [Rule]
 ruleDaysOfWeek = mkRuleDaysOfWeek
-  [ ( "понедельник","понедельн(ик|ика|ику)|пн")
-  , ( "вторник","вторн(ик|ика|ику)|вт")
-  , ( "среда","сред(а|у|е)|ср")
-  , ( "четверг","четв(ерг|ерга|ергу)|чт")
+  [ ( "понедельник","понедельн(ик(а|у)?)?|пн")
+  , ( "вторник","вторн(ик(а|у)?)?|вт")
+  , ( "среда","сред(а|у|ы)|ср")
+  , ( "четверг","четв(ерг(а|у)?)?|чт")
   , ( "пятница","пятн(ица|ицы|ицу)|пт")
   , ( "суббота","субб(ота|оты|оту)|cб")
   , ( "воскресенье","воскресень(е|ю|я)|вс")
@@ -135,7 +135,7 @@ ruleDdmmyyyy = Rule
   { name = "dd/mm/yyyy года"
   , pattern =
     [ regex "(3[01]|[12]\\d|0?[1-9])[-/](1[0-2]|0?[1-9])[/-](\\d{2,4})"
-     ,regex "год"
+     ,regex "года"
     ]
   , prod = \tokens -> case tokens of
       (_:Token RegexMatch (GroupMatch (m1:m2:m3:_)):_) -> do
@@ -147,6 +147,24 @@ ruleDdmmyyyy = Rule
   }
 
 
+ruleDayofmonthNonOrdinalNamedmonthYear :: Rule
+ruleDayofmonthNonOrdinalNamedmonthYear = Rule
+  { name = "<day-of-month> (non ordinal) <named-month> year"
+  , pattern =
+    [ Predicate isDOMInteger
+    , Predicate isAMonth
+    , regex "(\\d{2,4})"
+    , regex "года"
+    ]
+  , prod = \tokens -> case tokens of
+      (token:Token Time td:
+       Token RegexMatch (GroupMatch (match:_)):
+       _) -> do
+        n <- parseInt match
+        dom <- intersectDOM td token
+        Token Time <$> intersect dom (year n)
+      _ -> Nothing
+  }
 
 ruleDayofmonthordinalNamedmonthYear :: Rule
 ruleDayofmonthordinalNamedmonthYear = Rule
@@ -155,6 +173,7 @@ ruleDayofmonthordinalNamedmonthYear = Rule
     [ Predicate isDOMOrdinal
     , Predicate isAMonth
     , regex "(\\d{2,4})"
+    , regex "года"
     ]
   , prod = \tokens -> case tokens of
       (token:
@@ -245,6 +264,43 @@ ruleDurationAgo = Rule
         tt $ durationAgo dd
       _ -> Nothing
   }
+ruleAfterTimeofday :: Rule
+ruleAfterTimeofday = Rule
+  { name = "after <time-of-day>"
+  , pattern =
+    [ regex "после"
+    , dimension Time
+    ]
+  , prod = \tokens -> case tokens of
+      (_:Token Time td:_) -> tt $ withDirection TTime.After td
+      _ -> Nothing
+  }
+ruleDurationAfterTime :: Rule
+ruleDurationAfterTime = Rule
+  { name = "<duration> after <time>"
+  , pattern =
+    [ dimension Duration
+    , regex "после"
+    , dimension Time
+    ]
+  , prod = \tokens -> case tokens of
+      (Token Duration dd:_:Token Time td:_) ->
+        tt $ durationAfter dd td
+      _ -> Nothing
+  }
+ruleThisnextDayofweek :: Rule
+ruleThisnextDayofweek = Rule
+  { name = "this|next <day-of-week>"
+  , pattern =
+    [ regex "следующий"
+    , Predicate isADayOfWeek
+    ]
+  , prod = \tokens -> case tokens of
+      (_:Token Time td:_) ->
+        tt $ predNth 0 True td
+      _ -> Nothing
+  }
+
 
 --время
 ruleAtTimeofday :: Rule
@@ -390,7 +446,7 @@ ruleBetweenTimeofdayAndTimeofdayInterval :: Rule
 ruleBetweenTimeofdayAndTimeofdayInterval = Rule
   { name = "between <time-of-day> and <time-of-day> (interval)"
   , pattern =
-    [ regex "с|со"
+    [ regex "с(о)?"
     , Predicate isATimeOfDay
     , regex "до"
     , Predicate isATimeOfDay
@@ -404,7 +460,7 @@ ruleIntervalFrom :: Rule
 ruleIntervalFrom = Rule
   { name = "from <datetime> - <datetime> (interval)"
   , pattern =
-    [ regex "с|со"
+    [ regex "с(о)?"
     , dimension Time
     , regex "\\-|до|по"
     , dimension Time
@@ -418,7 +474,7 @@ ruleIntervalFromDDDDMonth :: Rule
 ruleIntervalFromDDDDMonth = Rule
   { name = "from the <day-of-month> (ordinal or number) to the <day-of-month> (ordinal or number) <named-month> (interval)"
   , pattern =
-    [ regex "с|со"
+    [ regex "с(о)?"
     , Predicate isDOMValue
     , regex "\\-|до|по"
     , Predicate isDOMValue
@@ -440,11 +496,10 @@ ruleIntervalFromDDDDOfMonth :: Rule
 ruleIntervalFromDDDDOfMonth = Rule
   { name = "from the <day-of-month> (ordinal or number) to the <day-of-month> (ordinal or number) of <named-month> (interval)"
   , pattern =
-    [ regex "с|со"
+    [ regex "с(о)?"
     , Predicate isDOMValue
     , regex "\\-|до|по"
     , Predicate isDOMValue
-    , regex "of"
     , Predicate isAMonth
     ]
   , prod = \tokens -> case tokens of
@@ -464,7 +519,7 @@ ruleIntervalTODFrom :: Rule
 ruleIntervalTODFrom = Rule
   { name = "from <time-of-day> - <time-of-day> (interval)"
   , pattern =
-    [ regex "с|со"
+    [ regex "с(о)?"
     , Predicate isATimeOfDay
     , regex "\\-|до|по"
     , Predicate isATimeOfDay
@@ -478,7 +533,7 @@ ruleIntervalFromDOW :: Rule
 ruleIntervalFromDOW = Rule
   { name = "from <day-of-week>  to <day-of-week> (interval)"
   , pattern =
-    [ regex "с|со"
+    [ regex "с(о)?"
     , Predicate isADayOfWeek
     , regex "\\-|до|по"
     , Predicate isADayOfWeek
@@ -497,6 +552,7 @@ rules =
   , ruleYyyymmdd
   , ruleDdmmyyyy
   , ruleDayofmonthordinalNamedmonthYear
+  , ruleDayofmonthNonOrdinalNamedmonthYear
   , ruleYearLatent2
   , ruleYearLatent
   , ruleYear
@@ -519,6 +575,9 @@ rules =
   , ruleIntervalFromDDDDOfMonth
   , ruleIntervalTODFrom
   , ruleIntervalFromDOW 
+  , ruleAfterTimeofday
+  , ruleDurationAfterTime
+  , ruleThisnextDayofweek
   ]
   ++ruleDaysOfWeek
   ++ruleInstants
