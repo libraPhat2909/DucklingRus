@@ -163,9 +163,6 @@ for i in range(len(body)):
   dictionary_timex3 = __createDictTimeX3(tid, timexType, value, timex)
   List_Of_Dict_Timex3.append(dictionary_timex3)
 
-print(List_Of_Dict_Timex3)	
-
-
 #function tokenize and lemma
 
 def __FuncTokLem(text):
@@ -220,5 +217,15 @@ def stringMix(a,b):
 for i in range(0,len(res)):
   if (res[i]["TIMEX3_TYPE"] == "TIME") & (res[i-1]["TIMEX3_TYPE"] == "DATE") & ( 'XXXX-XX-XX' in res[i]["TIMEX3_Value"]):
    res[i]["TIMEX3_Value"] = stringMix(res[i-1]["TIMEX3_Value"],res[i]["TIMEX3_Value"])
-  print(res)
+print(res)
 
+#print as tring
+Ann=" "
+for dictionary in res:
+  tid = dictionary["TIMEX3_TID"]
+  timexType = dictionary["TIMEX3_TYPE"]
+  value = dictionary["TIMEX3_Value"]
+  timex = dictionary["TIMEX3_BT"]
+  Ann = Ann + __getTIMEX3Str(tid, timexType, value, timex) + "\n"	 
+
+print(Ann)
